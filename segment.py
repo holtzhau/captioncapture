@@ -11,6 +11,19 @@ import string
 import time
 import sys
 
+import tesseract_sip as tesseract
+tessdata_prefix = os.environ.get('TESSDATA_PREFIX')
+# cv.SaveImage('test.png', image)
+# image = cv.LoadImage('test.png')
+if not tessdata_prefix:
+    tessdata_prefix = '/usr/share/tesseract-ocr/tessdata/'
+
+if not os.path.exists(tessdata_prefix):
+    # if you get this error, you need to download tesseract-ocr-3.02.eng.tar.gz 
+    # and unpack it in this directory. 
+    print >> sys.stderr, 'WARNING: tesseract OCR data directory was not found'
+tesseract_api = tesseract.TessBaseAPI()
+
 def in_vertical(seed, start, rect):
     if abs(start[3]-rect[3]) / float(start[3]) < 0.4:
         seed_mid = seed[1] + seed[3]/2
@@ -670,6 +683,7 @@ def edge_threshold(image, roi=None, debug=0):
 def recognize(image, display=None, visualize=None, clean=False):
     rects = detect(image, debug=0, display=display)
     candidates = segment(image, rects, debug=0, display=display)
+    # return
     font = cv.InitFont(cv.CV_FONT_VECTOR0, 0.4, 0.4, 0.0, 0, 0)
 
     source = cv.CreateImage((image.width, image.height), 8, 1)
@@ -687,7 +701,7 @@ def recognize(image, display=None, visualize=None, clean=False):
             # cv.SetImageROI(visualize, rect)
             cv.SetImageROI(source, rect)
             cv.SetImageROI(source2, rect)
-            cv.SetImageROI(image, rect)
+            # cv.SetImageROI(image, rect)
             cv.SetImageROI(mask, rect)
             bound_rect = bounding_rect(c["chars"])
             rects_to_mask([bound_rect], mask, value=255)
@@ -695,8 +709,8 @@ def recognize(image, display=None, visualize=None, clean=False):
             edge = edge_threshold(source)
             cv.Copy(edge, source2, mask)
 
-            text1, conf1 = tesseract(source)
-            text2, conf2 = tesseract(source2)
+            text1, conf1 = run_tesseract(source)
+            text2, conf2 = run_tesseract(source2)
             print text1, text2
             print conf1, conf2
             cv.ShowImage("source", source)
@@ -735,35 +749,24 @@ def recognize(image, display=None, visualize=None, clean=False):
             cv.Rectangle(visualize, (rect[0], rect[1]), (rect[0]+rect[2], rect[1]+rect[3]), col3, 1)     
             cv.ResetImageROI(source)
             cv.ResetImageROI(source2)
-            cv.ResetImageROI(image)
+            # cv.ResetImageROI(image)
             cv.ResetImageROI(mask)
 
-def tesseract(image):
-    import tesseract_sip as tesseract
-    tessdata_prefix = os.environ.get('TESSDATA_PREFIX')
-    # cv.SaveImage('test.png', image)
-    # image = cv.LoadImage('test.png')
-    if not tessdata_prefix:
-        tessdata_prefix = '/usr/share/tesseract-ocr/tessdata/'
+def run_tesseract(image):
 
-    if not os.path.exists(tessdata_prefix):
-        # if you get this error, you need to download tesseract-ocr-3.02.eng.tar.gz 
-        # and unpack it in this directory. 
-        print >> sys.stderr, 'WARNING: tesseract OCR data directory was not found'
-    api = tesseract.TessBaseAPI()
-    if not api.Init(tessdata_prefix, 'eng', tesseract.OEM_DEFAULT):
+    if not tesseract_api.Init(tessdata_prefix, 'eng', tesseract.OEM_DEFAULT):
         print >> sys.stderr, "Error initializing tesseract"
         exit(1)
-    api.SetPageSegMode(tesseract.PSM_SINGLE_LINE)
+    tesseract_api.SetPageSegMode(tesseract.PSM_SINGLE_LINE)
     # api.SetPageSegMode(tesseract.PSM_AUTO)
     # cvimg = cv2.imread('test.png')
     # api.SetImage(cvimg)
     source = cv.CreateImage(cv.GetSize(image), cv.IPL_DEPTH_8U, 3)
     cv.Merge(image, image, image, None, source)
-    api.SetImage(cv2num(source))
-    text = api.GetUTF8Text()
+    tesseract_api.SetImage(cv2num(source))
+    text = tesseract_api.GetUTF8Text()
     text = text.encode('ascii','ignore').strip()
-    return text, np.array(api.AllWordConfidences())
+    return text, np.array(tesseract_api.AllWordConfidences())
 
 if __name__ == "__main__":
     location = "data"
@@ -813,7 +816,7 @@ if __name__ == "__main__":
             cv.WaitKey(10)
 
 
-        result = recognize(image, display=display, visualize=original, 
+        result = recognize(original, display=display, visualize=original, 
                            clean=pretty_print)
         cv.ShowImage("main", original)
         if record:
