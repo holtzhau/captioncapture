@@ -225,7 +225,7 @@ def segment_rect(image, rect, debug=False, display=None, target_size=None, group
     edges = cv.CloneImage(image)
 
     min_x, min_y, width, height = rect
-    cv.SetImageROI(thresholded, rect)
+    # cv.SetImageROI(thresholded, rect)
     cv.SetImageROI(contour_image, rect)
     cv.SetImageROI(image, rect)
     cv.SetImageROI(edges, rect)
@@ -523,6 +523,12 @@ def segment_rect(image, rect, debug=False, display=None, target_size=None, group
                 if c == ord("z"):
                     next = True
     best_chars.sort(lambda x, y: cmp(x[0], y[0]))
+    cv.ResetImageROI(thresholded)
+    cv.ResetImageROI(contour_image)
+    cv.ResetImageROI(image)
+    cv.ResetImageROI(edges)
+    if display:
+        cv.ResetImageROI(display)
     return best_chars, best_threshold
 
 def edge_magnitude(image):
@@ -577,8 +583,8 @@ def segment(image, rects, debug=False, display=None):
             cv.Not(image, inverted)
             min_x, min_y, width, height = rect
             new_rect = rect
-            if display:
-                cv.ResetImageROI(display)
+            # if display:
+            #     cv.ResetImageROI(display)
             #cv.ShowImage("main", rectified)
             #cv.WaitKey(0)            
             for im in [rectified, inverted]:
@@ -602,11 +608,11 @@ def segment(image, rects, debug=False, display=None):
                                        "rect": new_rect, "threshold": best_threshold,
                                        "image":region, "invert": im == inverted})
 
-            cv.ResetImageROI(image)
-            cv.ResetImageROI(rectified)
-            cv.ResetImageROI(inverted)
-            if display:
-                cv.ResetImageROI(display)
+            # cv.ResetImageROI(image)
+            # cv.ResetImageROI(rectified)
+            # cv.ResetImageROI(inverted)
+            # if display:
+            #     cv.ResetImageROI(display)
     candidates.sort(lambda x, y: cmp(len(y["chars"]), len(x["chars"])))
 #    print candidates
     return candidates
@@ -629,6 +635,7 @@ def edge_threshold(image, roi=None, debug=0):
     v_edge = cv.CloneImage(image)
     magnitude = cv.CloneImage(horizontal)
 
+    storage = cv.CreateMemStorage(0)
     mag = cv.CloneImage(image)
     cv.Sobel(image, horizontal, 0, 1, 1)
     cv.Sobel(image, vertical, 1, 0, 1)
@@ -653,7 +660,6 @@ def edge_threshold(image, roi=None, debug=0):
         for threshold in range(0, r):
             cv.AdaptiveThreshold(image, thresholded, 255, \
                 cv.CV_ADAPTIVE_THRESH_MEAN_C, cv.CV_THRESH_BINARY_INV, window_size, threshold)
-            storage = cv.CreateMemStorage(0)
             contour_image = cv.CloneImage(thresholded)
             contours = cv.FindContours(contour_image, storage, cv.CV_RETR_LIST)
             cv.Zero(draw_image)
@@ -692,16 +698,11 @@ def recognize(image, display=None, visualize=None, clean=False):
     cv.CvtColor(image, source, cv.CV_BGR2GRAY)
     for i, c in enumerate(candidates):
         window_name = "candidate%s" % i
-        candidate = cv.CloneImage(c["image"])
-
-
         rect = c["rect"]
         invert  = c["invert"]
         if visualize:
-            # cv.SetImageROI(visualize, rect)
             cv.SetImageROI(source, rect)
             cv.SetImageROI(source2, rect)
-            # cv.SetImageROI(image, rect)
             cv.SetImageROI(mask, rect)
             bound_rect = bounding_rect(c["chars"])
             rects_to_mask([bound_rect], mask, value=255)
@@ -711,8 +712,6 @@ def recognize(image, display=None, visualize=None, clean=False):
 
             text1, conf1 = run_tesseract(source)
             text2, conf2 = run_tesseract(source2)
-            print text1, text2
-            print conf1, conf2
             cv.ShowImage("source", source)
             cv.ShowImage("thresholded", source2)
             cv.ShowImage("edge", edge)
@@ -747,26 +746,28 @@ def recognize(image, display=None, visualize=None, clean=False):
                 if text2 is not None:
                     cv.PutText(visualize, text2, (rect[0], rect[1]-15), font, col2)
             cv.Rectangle(visualize, (rect[0], rect[1]), (rect[0]+rect[2], rect[1]+rect[3]), col3, 1)     
+
             cv.ResetImageROI(source)
             cv.ResetImageROI(source2)
-            # cv.ResetImageROI(image)
             cv.ResetImageROI(mask)
 
 def run_tesseract(image):
-
     if not tesseract_api.Init(tessdata_prefix, 'eng', tesseract.OEM_DEFAULT):
         print >> sys.stderr, "Error initializing tesseract"
         exit(1)
     tesseract_api.SetPageSegMode(tesseract.PSM_SINGLE_LINE)
     # api.SetPageSegMode(tesseract.PSM_AUTO)
     # cvimg = cv2.imread('test.png')
-    # api.SetImage(cvimg)
+    # tesseract_api.SetImage(cvimg)
+    # return "123", np.array([60])
     source = cv.CreateImage(cv.GetSize(image), cv.IPL_DEPTH_8U, 3)
     cv.Merge(image, image, image, None, source)
     tesseract_api.SetImage(cv2num(source))
     text = tesseract_api.GetUTF8Text()
     text = text.encode('ascii','ignore').strip()
-    return text, np.array(tesseract_api.AllWordConfidences())
+    score = np.array(tesseract_api.AllWordConfidences())
+    tesseract_api.Clear()
+    return text, score
 
 if __name__ == "__main__":
     location = "data"
@@ -814,7 +815,6 @@ if __name__ == "__main__":
                 image = cv.QueryFrame(capture)
             cv.ShowImage("original", image)
             cv.WaitKey(10)
-
 
         result = recognize(original, display=display, visualize=original, 
                            clean=pretty_print)
