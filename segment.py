@@ -47,17 +47,11 @@ def detect(image, debug=False, display=None):
     result = np.asarray(cv.GetMat(v_edges), dtype=np.float)        
     threshold = 6
     rects = []
-
     while len(rects) < 1 and threshold > 0:
         rects = []
         cv.Convert(vertical, v_edges)
-#        cv.Threshold(v_edges, v_edges, threshold, 255, cv.CV_THRESH_BINARY)
-        cv.AdaptiveThreshold(v_edges, v_edges, 255, cv.CV_ADAPTIVE_THRESH_MEAN_C, cv.CV_THRESH_BINARY_INV, 17, threshold)
-        # # if not enough edge response, repeat at lower threshold
-        # if cv.Sum(v_edges)[0]/255/(v_edges.width*v_edges.height) < 0.03:
-        #     cv.Convert(vertical, v_edges)
-        #     cv.AdaptiveThreshold(v_edges, v_edges, 255, cv.CV_ADAPTIVE_THRESH_MEAN_C, cv.CV_THRESH_BINARY_INV, 17, 4)           
-#        threshold -= 1        
+        cv.AdaptiveThreshold(v_edges, v_edges, 255, cv.CV_ADAPTIVE_THRESH_MEAN_C, cv.CV_THRESH_BINARY_INV, 17, threshold)        
+        threshold -= 1        
         storage = cv.CreateMemStorage(0)
         contour_image = cv.CloneImage(v_edges)
         contours = cv.FindContours(contour_image, storage, cv.CV_RETR_LIST, cv.CV_CHAIN_APPROX_NONE, (0,0))

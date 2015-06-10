@@ -6,5 +6,15 @@ Detect and recognize onscreen text in news broadcast videos.
 License: MIT
 
 Requirements:
-1.) Opencv 2.4  
+-------------
+1.) OpenCV 2.4, scons, python-dev
 2.) https://github.com/virtuald/python-tesseract-sip
+
+Building:
+---------
+1.) Install requirements, python-tesseract-sip 
+2.) Run scons in source directory
+
+Example:
+--------
+python segment.py video_file.avi
