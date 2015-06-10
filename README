@@ -7,12 +7,13 @@ License: MIT
 
 Requirements:
 -------------
-1.) OpenCV 2.4, scons, python-dev
-2.) https://github.com/virtuald/python-tesseract-sip
+1.) OpenCV 2.4, scons, python-dev, libtesseract-dev
+2.) Install SIP: http://www.riverbankcomputing.com/software/sip/
+3.) Install tesseract-sip: sudo pip install tesseract_sip
 
 Building:
 ---------
-1.) Install requirements, python-tesseract-sip 
+1.) Install requirements 
 2.) Run scons in source directory
 
 Example:
